@@ -1,9 +1,9 @@
 package com.gw.pay.external.impl;
 
 import com.gw.pay.config.WechatPayProperties;
-import com.gw.pay.data.CreateOrder;
 import com.gw.pay.external.WechatPayExternalService;
-import com.wechat.pay.java.core.RSAAutoCertificateConfig;
+import com.gw.pay.external.request.OrderRequest;
+import com.wechat.pay.java.core.Config;
 import com.wechat.pay.java.core.exception.HttpException;
 import com.wechat.pay.java.core.exception.MalformedMessageException;
 import com.wechat.pay.java.core.exception.ServiceException;
@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.math.BigDecimal;
 
 /**
  * Description: 微信支付对接
@@ -26,28 +27,29 @@ import javax.annotation.Resource;
 public class WechatPayExternalServiceImpl implements WechatPayExternalService {
 
     @Resource
-    private RSAAutoCertificateConfig rsaAutoCertificateConfig;
+    private Config config;
 
     @Resource
     private WechatPayProperties properties;
 
     @Override
-    public PrepayResponse createOrder(CreateOrder createOrder) {
+    public PrepayResponse createOrder(OrderRequest orderRequest) {
         PrepayRequest request = new PrepayRequest();
         request.setAppid(properties.getAppId());
         request.setMchid(properties.getMerchantId());
-        request.setDescription(createOrder.getOrderTitle());
-        request.setOutTradeNo(createOrder.getOrderId());
+        request.setDescription(orderRequest.getPayContent());
+        request.setOutTradeNo(orderRequest.getOutTradeNo());
         request.setNotifyUrl(properties.getPayNotifyUrl());
         Amount amount = new Amount();
-        amount.setTotal(createOrder.getAmountTotal());
+        BigDecimal amountTotal = orderRequest.getPayMoney().multiply(new BigDecimal("100").setScale(0, BigDecimal.ROUND_DOWN));
+        amount.setTotal(amountTotal.intValue());
         request.setAmount(amount);
         Payer payer = new Payer();
-        payer.setOpenid(createOrder.getOpenid());
+        payer.setOpenid(orderRequest.getOpenId());
         request.setPayer(payer);
         PrepayResponse result;
         try {
-            JsapiService service = new JsapiService.Builder().config(rsaAutoCertificateConfig).build();
+            JsapiService service = new JsapiService.Builder().config(config).build();
             result = service.prepay(request);
         } catch (HttpException e) {
             log.error("微信下单发送HTTP请求失败，错误信息：{}", e.getHttpRequest());
@@ -71,7 +73,7 @@ public class WechatPayExternalServiceImpl implements WechatPayExternalService {
         queryRequest.setOutTradeNo(outTradeNo);
         Transaction result;
         try {
-            JsapiService service = new JsapiService.Builder().config(rsaAutoCertificateConfig).build();
+            JsapiService service = new JsapiService.Builder().config(config).build();
             result = service.queryOrderByOutTradeNo(queryRequest);
         } catch (ServiceException e) {
             log.error("订单查询失败，返回码：{},返回信息：{}", e.getErrorCode(), e.getErrorMessage());
@@ -87,7 +89,7 @@ public class WechatPayExternalServiceImpl implements WechatPayExternalService {
         queryRequest.setTransactionId(transactionId);
         Transaction result;
         try {
-            JsapiService service = new JsapiService.Builder().config(rsaAutoCertificateConfig).build();
+            JsapiService service = new JsapiService.Builder().config(config).build();
             result = service.queryOrderById(queryRequest);
         } catch (ServiceException e) {
             log.error("订单查询失败，返回码：{},返回信息：{}", e.getErrorCode(), e.getErrorMessage());
@@ -102,7 +104,7 @@ public class WechatPayExternalServiceImpl implements WechatPayExternalService {
         closeOrderRequest.setMchid(properties.getMerchantId());
         closeOrderRequest.setOutTradeNo(outTradeNo);
         try {
-            JsapiService service = new JsapiService.Builder().config(rsaAutoCertificateConfig).build();
+            JsapiService service = new JsapiService.Builder().config(config).build();
             service.closeOrder(closeOrderRequest);
         } catch (ServiceException e) {
             log.error("订单关闭失败，返回码：{},返回信息：{}", e.getErrorCode(), e.getErrorMessage());

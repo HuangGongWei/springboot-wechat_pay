@@ -1,6 +1,10 @@
 package com.gw.pay.config;
 
+import com.wechat.pay.java.core.Config;
 import com.wechat.pay.java.core.RSAAutoCertificateConfig;
+import com.wechat.pay.java.core.notification.NotificationConfig;
+import com.wechat.pay.java.core.notification.NotificationParser;
+import com.wechat.pay.java.service.payments.jsapi.JsapiServiceExtension;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -22,7 +26,7 @@ import java.io.InputStreamReader;
  */
 @Slf4j
 @Configuration
-public class WechatPayAutoCertificateConfig {
+public class WechatPayConfig {
 
     @Autowired
     private WechatPayProperties properties;
@@ -34,11 +38,11 @@ public class WechatPayAutoCertificateConfig {
 
 
     /**
-     * 初始化商户配置
+     * 自动更新证书
      * @return RSAAutoCertificateConfig
      */
     @Bean
-    public RSAAutoCertificateConfig rsaAutoCertificateConfig() throws IOException {
+    public Config config() throws IOException {
         String privatePath = CLASS_PATH + properties.getPrivateKeyPath();
         Resource resourcePrivate = resourceLoader.getResource(privatePath);
         String privateKey = inputStreamToString(resourcePrivate.getInputStream());
@@ -50,6 +54,31 @@ public class WechatPayAutoCertificateConfig {
                 .apiV3Key(properties.getApiV3key())
                 .build();
         return config;
+    }
+
+    /**
+     * 微信支付对象
+     * @param config Config
+     * @return JsapiServiceExtension
+     */
+    @Bean
+    public JsapiServiceExtension jsapiServiceExtension(Config config){
+        log.info("==========加载微信支付对象");
+        JsapiServiceExtension service = new JsapiServiceExtension.Builder().config(config).build();
+        return service;
+    }
+
+    /**
+     * 微信回调对象
+     *
+     * @param config Config
+     * @return NotificationParser
+     */
+    @Bean
+    public NotificationParser notificationParser(Config config) {
+        log.info("==========加载微信回调解析对象");
+        NotificationParser parser = new NotificationParser((NotificationConfig) config);
+        return parser;
     }
 
     /**

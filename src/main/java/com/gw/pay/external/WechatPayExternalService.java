@@ -1,6 +1,6 @@
 package com.gw.pay.external;
 
-import com.gw.pay.data.CreateOrder;
+import com.gw.pay.external.request.OrderRequest;
 import com.wechat.pay.java.service.payments.jsapi.model.PrepayResponse;
 import com.wechat.pay.java.service.payments.model.Transaction;
 
@@ -13,10 +13,10 @@ import com.wechat.pay.java.service.payments.model.Transaction;
 public interface WechatPayExternalService {
     /**
      * 创建订单
-     * @param createOrder 创建订单请求体
+     * @param orderRequest 订单请求体
      * @return预支付交易会话标识
      */
-    PrepayResponse createOrder(CreateOrder createOrder);
+    PrepayResponse createOrder(OrderRequest orderRequest);
 
     /**
      * 根据商户订单号查询订单

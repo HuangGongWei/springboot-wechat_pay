@@ -1,7 +1,7 @@
 package com.gw.pay;
 
 import com.alibaba.fastjson.JSONObject;
-import com.gw.pay.data.CreateOrder;
+import com.gw.pay.external.request.OrderRequest;
 import com.gw.pay.external.WechatPayExternalService;
 import com.wechat.pay.java.service.payments.jsapi.model.PrepayResponse;
 import com.wechat.pay.java.service.payments.model.Transaction;
@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import javax.annotation.Resource;
+import java.math.BigDecimal;
 
 @SpringBootTest
 class SpringbootWechatPayApplicationTests {
@@ -18,11 +19,11 @@ class SpringbootWechatPayApplicationTests {
 
     @Test
     void createOrder() {
-        CreateOrder createOrder = new CreateOrder();
-        createOrder.setOrderId("100000001");
-        createOrder.setOrderTitle("商机直租会员续费");
-        createOrder.setAmountTotal(1);
-        createOrder.setOpenid("oKwQd5MtFfgnXyLBp7vC6Pe3HAJQ");
+        OrderRequest createOrder = new OrderRequest();
+        createOrder.setOutTradeNo("100000001");
+        createOrder.setPayContent("商机直租会员续费");
+        createOrder.setPayMoney(new BigDecimal(100.03));
+        createOrder.setOpenId("oKwQd5MtFfgnXyLBp7vC6Pe3HAJQ");
         PrepayResponse prepayResponse = wechatPayExternalService.createOrder(createOrder);
         System.out.println(JSONObject.toJSONString(prepayResponse));
     }
