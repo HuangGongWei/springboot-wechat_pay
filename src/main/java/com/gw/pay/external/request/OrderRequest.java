@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Description: 创建订单
+ * Description: 订单请求体
  *
  * @author LinHuiBa-YanAn
  * @date 2023/10/6 17:06
