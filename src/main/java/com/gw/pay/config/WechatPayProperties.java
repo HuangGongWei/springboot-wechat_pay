@@ -23,13 +23,13 @@ public class WechatPayProperties {
      */
     private String merchantId;
     /**
-     * 商户API私钥
+     * 商户证书路径
+     */
+    private String certPemPath;
+    /**
+     * 商户API私钥路径
      */
     private String privateKeyPath;
-    /**
-     * 商户证书序列号
-     */
-    private String merchantSerialNumber;
     /**
      * 商户APIv3密钥
      */

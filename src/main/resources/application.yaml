@@ -4,14 +4,14 @@ server:
 wechat:
   pay:
     # 微信公众号或者小程序等的appId
-    appId: XXXX
+    appId: XXX
     # 微信支付商户号
-    merchantId: XXXX
-    # 商户API私钥
+    merchantId: XXX
+    # 商户证书路径
+    certPemPath: /apiclient_cert.pem
+    # 商户API私钥路径
     privateKeyPath: /apiclient_key.pem
-    # 商户证书序列号
-    merchantSerialNumber: XXXXX
     # 商户APIv3密钥
-    apiV3key: XXXXX
+    apiV3key: XXXX
     # 支付回调通知地址
-    payNotifyUrl: https://XXXXXXXXXXX/api/v1/wechat/pay/callback
+    payNotifyUrl: https://XXXX/api/callback/wechat/pay/callback

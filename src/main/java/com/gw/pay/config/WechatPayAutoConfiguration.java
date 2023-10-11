@@ -16,17 +16,18 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.security.cert.*;
 
 
 /**
- * Description: 初始化 具有自动下载并更新平台证书能力的RSA配置类并托关于spring
+ * Description: 微信支付相关自动配置
  *
  * @author LinHuiBa-YanAn
  * @date 2023/10/6 10:50
  */
 @Slf4j
 @Configuration
-public class WechatPayConfig {
+public class WechatPayAutoConfiguration {
 
     @Autowired
     private WechatPayProperties properties;
@@ -39,10 +40,16 @@ public class WechatPayConfig {
 
     /**
      * 自动更新证书
+     *
      * @return RSAAutoCertificateConfig
      */
     @Bean
     public Config config() throws IOException {
+        String path = CLASS_PATH + properties.getCertPemPath();
+        Resource resourceCert = resourceLoader.getResource(path);
+        X509Certificate certificate = getCertificate(resourceCert.getInputStream());
+        String merchantSerialNumber = certificate.getSerialNumber().toString(16).toUpperCase();
+        log.info("==========证书序列号：{}，商户信息：{}", merchantSerialNumber, certificate.getSubjectDN());
         String privatePath = CLASS_PATH + properties.getPrivateKeyPath();
         Resource resourcePrivate = resourceLoader.getResource(privatePath);
         String privateKey = inputStreamToString(resourcePrivate.getInputStream());
@@ -50,7 +57,7 @@ public class WechatPayConfig {
         RSAAutoCertificateConfig config = new RSAAutoCertificateConfig.Builder()
                 .merchantId(properties.getMerchantId())
                 .privateKey(privateKey)
-                .merchantSerialNumber(properties.getMerchantSerialNumber())
+                .merchantSerialNumber(merchantSerialNumber)
                 .apiV3Key(properties.getApiV3key())
                 .build();
         return config;
@@ -97,6 +104,27 @@ public class WechatPayConfig {
         }
         reader.close();
         return stringBuilder.toString();
+    }
+
+    /**
+     * 获取证书 将文件流转成证书文件
+     *
+     * @param inputStream 证书文件
+     * @return {@link X509Certificate} 获取证书
+     */
+    public static X509Certificate getCertificate(InputStream inputStream) {
+        try {
+            CertificateFactory cf = CertificateFactory.getInstance("X509");
+            X509Certificate cert = (X509Certificate) cf.generateCertificate(inputStream);
+            cert.checkValidity();
+            return cert;
+        } catch (CertificateExpiredException e) {
+            throw new RuntimeException("证书已过期", e);
+        } catch (CertificateNotYetValidException e) {
+            throw new RuntimeException("证书尚未生效", e);
+        } catch (CertificateException e) {
+            throw new RuntimeException("无效的证书", e);
+        }
     }
 
 }
