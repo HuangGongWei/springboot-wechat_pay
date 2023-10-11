@@ -19,6 +19,11 @@ public class PayLogPO {
     private Long id;
 
     /**
+     * 订单id
+     */
+    private Long orderId;
+
+    /**
      * 商户支付no 和微信交互 查询订单使用（outTradeNo）
      */
     private String outTradeNo;
