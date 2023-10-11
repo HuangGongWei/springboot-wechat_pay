@@ -2,7 +2,7 @@ package com.gw.pay.external.impl;
 
 import com.gw.pay.config.WechatPayProperties;
 import com.gw.pay.external.WechatPayExternalService;
-import com.gw.pay.external.request.OrderRequest;
+import com.gw.pay.external.request.CreateOrderRequest;
 import com.wechat.pay.java.core.exception.HttpException;
 import com.wechat.pay.java.core.exception.MalformedMessageException;
 import com.wechat.pay.java.core.exception.ServiceException;
@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -34,25 +35,25 @@ public class WechatPayExternalServiceImpl implements WechatPayExternalService {
     private JsapiServiceExtension jsapiServiceExtension;
 
     @Override
-    public PrepayWithRequestPaymentResponse prepayWithRequestPayment(OrderRequest orderRequest) {
+    public PrepayWithRequestPaymentResponse prepayWithRequestPayment(CreateOrderRequest createOrderRequest) {
         log.info("prepayWithRequestPayment");
         PrepayRequest request = new PrepayRequest();
         Amount amount = new Amount();
-        BigDecimal payMoney = orderRequest.getPayMoney();
-        BigDecimal amountTotal = payMoney.multiply(new BigDecimal("100").setScale(0, BigDecimal.ROUND_DOWN));
+        BigDecimal payMoney = createOrderRequest.getPayMoney();
+        BigDecimal amountTotal = payMoney.multiply(new BigDecimal("100").setScale(0, RoundingMode.DOWN));
         amount.setTotal(amountTotal.intValue());
         request.setAmount(amount);
         Payer payer = new Payer();
-        payer.setOpenid(orderRequest.getOpenId());
+        payer.setOpenid(createOrderRequest.getOpenId());
         request.setPayer(payer);
         request.setTimeExpire(getExpiredTimeStr());
         request.setAppid(properties.getAppId());
         request.setMchid(properties.getMerchantId());
-        request.setAttach(String.valueOf(orderRequest.getId()));
-        request.setDescription(orderRequest.getPayContent());
+        request.setAttach(String.valueOf(createOrderRequest.getId()));
+        request.setDescription(createOrderRequest.getPayContent());
         request.setNotifyUrl(properties.getPayNotifyUrl());
         //这里生成流水号，后续用这个流水号与微信交互，查询订单状态
-        request.setOutTradeNo(orderRequest.getOutTradeNo());
+        request.setOutTradeNo(createOrderRequest.getOutTradeNo());
         PrepayWithRequestPaymentResponse result;
         try {
             result = jsapiServiceExtension.prepayWithRequestPayment(request);

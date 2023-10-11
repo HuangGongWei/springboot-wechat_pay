@@ -1,4 +1,4 @@
-package com.gw.pay.service;
+package com.gw.pay;
 
 import com.wechat.pay.java.core.Config;
 import com.wechat.pay.java.core.RSAAutoCertificateConfig;

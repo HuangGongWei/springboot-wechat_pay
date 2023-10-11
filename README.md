@@ -251,6 +251,7 @@ public class WechatPayAutoCertificateConfig {
 ```java
 package com.gw.pay.external;
 
+import com.gw.pay.external.request.CreateOrderRequest;
 import com.gw.pay.external.request.OrderRequest;
 import com.wechat.pay.java.service.payments.jsapi.model.PrepayResponse;
 import com.wechat.pay.java.service.payments.model.Transaction;
@@ -267,7 +268,7 @@ public interface WechatPayExternalService {
      * @param createOrder 创建订单请求体
      * @return预支付交易会话标识
      */
-    PrepayResponse createOrder(OrderRequest createOrder);
+    PrepayResponse createOrder(CreateOrderRequest createOrder);
 
     /**
      * 根据商户订单号查询订单
@@ -300,6 +301,7 @@ public interface WechatPayExternalService {
 package com.gw.pay.external.impl;
 
 import com.gw.pay.config.WechatPayProperties;
+import com.gw.pay.external.request.CreateOrderRequest;
 import com.gw.pay.external.request.OrderRequest;
 import com.wechat.pay.java.core.RSAAutoCertificateConfig;
 import com.wechat.pay.java.core.exception.HttpException;
@@ -330,7 +332,7 @@ public class WechatPayExternalServiceImpl implements WechatPayExternalService {
     private WechatPayProperties properties;
 
     @Override
-    public PrepayResponse createOrder(OrderRequest createOrder) {
+    public PrepayResponse createOrder(CreateOrderRequest createOrder) {
         PrepayRequest request = new PrepayRequest();
         request.setAppid(properties.getAppId());
         request.setMchid(properties.getMerchantId());
@@ -446,6 +448,7 @@ public class CreateOrder {
 package com.gw.pay;
 
 import com.alibaba.fastjson.JSONObject;
+import com.gw.pay.external.request.CreateOrderRequest;
 import com.gw.pay.external.request.OrderRequest;
 import com.wechat.pay.java.service.payments.jsapi.model.PrepayResponse;
 import com.wechat.pay.java.service.payments.model.Transaction;
@@ -462,7 +465,7 @@ class SpringbootWechatPayApplicationTests {
 
     @Test
     void createOrder() {
-        OrderRequest createOrder = new OrderRequest();
+        CreateOrderRequest createOrder = new CreateOrderRequest();
         createOrder.setOrderId("100000001");
         createOrder.setOrderTitle("商机直租会员续费");
         createOrder.setAmountTotal(1);
