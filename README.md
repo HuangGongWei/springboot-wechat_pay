@@ -301,7 +301,6 @@ package com.gw.pay.external.impl;
 
 import com.gw.pay.config.WechatPayProperties;
 import com.gw.pay.external.request.OrderRequest;
-import com.gw.pay.external.WechatPayExternalService;
 import com.wechat.pay.java.core.RSAAutoCertificateConfig;
 import com.wechat.pay.java.core.exception.HttpException;
 import com.wechat.pay.java.core.exception.MalformedMessageException;
@@ -448,7 +447,6 @@ package com.gw.pay;
 
 import com.alibaba.fastjson.JSONObject;
 import com.gw.pay.external.request.OrderRequest;
-import com.gw.pay.external.WechatPayExternalService;
 import com.wechat.pay.java.service.payments.jsapi.model.PrepayResponse;
 import com.wechat.pay.java.service.payments.model.Transaction;
 import org.junit.jupiter.api.Test;
