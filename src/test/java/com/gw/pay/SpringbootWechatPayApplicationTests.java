@@ -9,10 +9,12 @@ import com.wechat.pay.java.service.payments.jsapi.model.PrepayWithRequestPayment
 import com.wechat.pay.java.service.payments.model.Transaction;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import javax.annotation.Resource;
 import java.math.BigDecimal;
 
+@ActiveProfiles("local")
 @SpringBootTest
 class SpringbootWechatPayApplicationTests {
 
