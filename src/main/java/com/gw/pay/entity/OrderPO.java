@@ -32,5 +32,9 @@ public class OrderPO {
      * 用户id
      */
     private Long userId;
+    /**
+     * 订单状态
+     */
+    private Integer status;
     // 省略其他信息
 }

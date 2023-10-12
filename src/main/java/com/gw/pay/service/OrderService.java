@@ -1,5 +1,6 @@
 package com.gw.pay.service;
 
+import com.gw.pay.vo.StatusVO;
 import com.gw.pay.vo.OrderPayVO;
 
 /**
@@ -22,5 +23,19 @@ public interface OrderService {
      * @return 订单支付
      */
     OrderPayVO orderPay(Long orderId);
+
+    /**
+     * 查询订单支付状态
+     * @param payLogId 支付记录id
+     * @return 订单支付状态
+     */
+    StatusVO queryOrderPayStatus(Long payLogId);
+
+    /**
+     * 查询订单状态
+     * @param orderId 订单id
+     * @return 订单状态
+     */
+    StatusVO queryOrderStatus(Long orderId);
 
 }

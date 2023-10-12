@@ -2,6 +2,7 @@ package com.gw.pay.dao.impl;
 
 import com.gw.pay.dao.OrderDao;
 import com.gw.pay.entity.OrderPO;
+import com.gw.pay.enums.OrderStatusEnum;
 import com.gw.pay.utils.NumberGenerate;
 import org.springframework.stereotype.Service;
 
@@ -19,9 +20,9 @@ import java.util.Map;
 public class OrderDaoImpl implements OrderDao {
     private static Map<Long, OrderPO> dataMap = new HashMap<>();
     static {
-        dataMap.put(10001L, new OrderPO(10001L, "大娃娃", new BigDecimal("399.00"), 2019112655L));
-        dataMap.put(10002L, new OrderPO(10002L, "Apple15", new BigDecimal("5999.00"), 2019112689L));
-        dataMap.put(10003L, new OrderPO(10003L, "精品女士二手车", new BigDecimal("20000.00"), 2019112689L));
+        dataMap.put(10001L, new OrderPO(10001L, "大娃娃", new BigDecimal("399.00"), 2019112655L, OrderStatusEnum.TO_PAY.getCode()));
+        dataMap.put(10002L, new OrderPO(10002L, "Apple15", new BigDecimal("5999.00"), 2019112689L, OrderStatusEnum.TO_PAY.getCode()));
+        dataMap.put(10003L, new OrderPO(10003L, "精品女士二手车", new BigDecimal("20000.00"), 2019112689L, OrderStatusEnum.TO_PAY.getCode()));
     }
 
     @Override

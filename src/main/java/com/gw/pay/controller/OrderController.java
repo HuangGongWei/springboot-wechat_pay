@@ -3,6 +3,7 @@ package com.gw.pay.controller;
 import com.gw.pay.dto.IdDTO;
 import com.gw.pay.service.OrderService;
 import com.gw.pay.vo.OrderPayVO;
+import com.gw.pay.vo.StatusVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -43,5 +44,24 @@ public class OrderController {
     public ResponseEntity<OrderPayVO> orderPay(@RequestBody IdDTO idDTO) {
         return ResponseEntity.ok(orderService.orderPay(idDTO.getId()));
     }
+
+    /**
+     * 支付记录状态查询
+     * @return
+     */
+    @PostMapping(value = "/query/pay/status")
+    public ResponseEntity<StatusVO> queryOrderPay(@RequestBody IdDTO idDTO) {
+        return ResponseEntity.ok(orderService.queryOrderPayStatus(idDTO.getId()));
+    }
+
+    /**
+     * 订单状态查询
+     * @return
+     */
+    @PostMapping(value = "/query/order/status")
+    public ResponseEntity<StatusVO> queryOrderStatus(@RequestBody IdDTO idDTO) {
+        return ResponseEntity.ok(orderService.queryOrderStatus(idDTO.getId()));
+    }
+
 
 }
