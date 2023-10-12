@@ -34,6 +34,11 @@ public class PayLogPO {
     private String transactionId;
 
     /**
+     * 用户userId
+     */
+    private Long userId;
+
+    /**
      * 用户openid
      */
     private String openId;

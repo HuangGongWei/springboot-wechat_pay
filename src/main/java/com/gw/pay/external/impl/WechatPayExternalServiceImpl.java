@@ -2,7 +2,7 @@ package com.gw.pay.external.impl;
 
 import com.gw.pay.config.WechatPayProperties;
 import com.gw.pay.external.WechatPayExternalService;
-import com.gw.pay.external.request.CreateOrderRequest;
+import com.gw.pay.external.request.CreateOrderPayRequest;
 import com.wechat.pay.java.core.exception.HttpException;
 import com.wechat.pay.java.core.exception.MalformedMessageException;
 import com.wechat.pay.java.core.exception.ServiceException;
@@ -35,25 +35,25 @@ public class WechatPayExternalServiceImpl implements WechatPayExternalService {
     private JsapiServiceExtension jsapiServiceExtension;
 
     @Override
-    public PrepayWithRequestPaymentResponse prepayWithRequestPayment(CreateOrderRequest createOrderRequest) {
+    public PrepayWithRequestPaymentResponse prepayWithRequestPayment(CreateOrderPayRequest createOrderPay) {
         log.info("prepayWithRequestPayment");
         PrepayRequest request = new PrepayRequest();
         Amount amount = new Amount();
-        BigDecimal payMoney = createOrderRequest.getPayMoney();
+        BigDecimal payMoney = createOrderPay.getPayMoney();
         BigDecimal amountTotal = payMoney.multiply(new BigDecimal("100").setScale(0, RoundingMode.DOWN));
         amount.setTotal(amountTotal.intValue());
         request.setAmount(amount);
         Payer payer = new Payer();
-        payer.setOpenid(createOrderRequest.getOpenId());
+        payer.setOpenid(createOrderPay.getOpenId());
         request.setPayer(payer);
         request.setTimeExpire(getExpiredTimeStr());
         request.setAppid(properties.getAppId());
         request.setMchid(properties.getMerchantId());
-        request.setAttach(String.valueOf(createOrderRequest.getId()));
-        request.setDescription(createOrderRequest.getPayContent());
+        request.setAttach(String.valueOf(createOrderPay.getId()));
+        request.setDescription(createOrderPay.getPayContent());
         request.setNotifyUrl(properties.getPayNotifyUrl());
         //这里生成流水号，后续用这个流水号与微信交互，查询订单状态
-        request.setOutTradeNo(createOrderRequest.getOutTradeNo());
+        request.setOutTradeNo(createOrderPay.getOutTradeNo());
         PrepayWithRequestPaymentResponse result;
         try {
             result = jsapiServiceExtension.prepayWithRequestPayment(request);

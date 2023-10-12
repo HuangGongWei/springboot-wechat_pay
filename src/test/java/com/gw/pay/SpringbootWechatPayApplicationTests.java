@@ -2,7 +2,7 @@ package com.gw.pay;
 
 import com.alibaba.fastjson.JSONObject;
 import com.gw.pay.external.WechatPayExternalService;
-import com.gw.pay.external.request.CreateOrderRequest;
+import com.gw.pay.external.request.CreateOrderPayRequest;
 import com.wechat.pay.java.service.payments.jsapi.model.PrepayWithRequestPaymentResponse;
 import com.wechat.pay.java.service.payments.model.Transaction;
 import org.junit.jupiter.api.Test;
@@ -22,7 +22,7 @@ class SpringbootWechatPayApplicationTests {
 
     @Test
     void prepayWithRequestPayment() {
-        CreateOrderRequest createOrderRequest = new CreateOrderRequest();
+        CreateOrderPayRequest createOrderRequest = new CreateOrderPayRequest();
         createOrderRequest.setId(1001L);
         createOrderRequest.setOutTradeNo("100000004");
         createOrderRequest.setOpenId("oKwQd5MtFfgnXyLBp7vC6Pe3HAJQ");

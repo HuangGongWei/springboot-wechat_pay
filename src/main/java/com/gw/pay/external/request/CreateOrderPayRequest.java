@@ -11,7 +11,7 @@ import java.math.BigDecimal;
  * @date 2023/10/6 17:06
  */
 @Data
-public class CreateOrderRequest {
+public class CreateOrderPayRequest {
     /**
      * 主键id
      */
