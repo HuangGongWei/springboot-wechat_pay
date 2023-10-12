@@ -1,7 +1,9 @@
 package com.gw.pay.utils;
 
-import java.util.Random;
+import cn.hutool.core.util.RandomUtil;
+
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Description: 数字生成器
@@ -27,7 +29,7 @@ public class NumberGenerate {
      * @return 5位数字
      */
     public static Long generatorRandomNum() {
-        Random random = new Random(100000);
-        return random.nextLong();
+        ThreadLocalRandom random = RandomUtil.getRandom();
+        return random.nextLong(10000);
     }
 }

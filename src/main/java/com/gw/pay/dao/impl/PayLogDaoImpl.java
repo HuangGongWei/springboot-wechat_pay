@@ -3,6 +3,8 @@ package com.gw.pay.dao.impl;
 import com.gw.pay.dao.PayLogDao;
 import com.gw.pay.entity.PayLogPO;
 import com.gw.pay.utils.NumberGenerate;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -13,6 +15,8 @@ import java.util.Map;
  * @author LinHuiBa-YanAn
  * @date 2023/10/11 20:29
  */
+@Slf4j
+@Service
 public class PayLogDaoImpl implements PayLogDao {
 
     private static Map<Long, PayLogPO> dataMap = new HashMap<>();
