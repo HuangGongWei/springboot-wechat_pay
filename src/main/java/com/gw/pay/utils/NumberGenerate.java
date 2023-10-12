@@ -30,6 +30,6 @@ public class NumberGenerate {
      */
     public static Long generatorRandomNum() {
         ThreadLocalRandom random = RandomUtil.getRandom();
-        return random.nextLong(10000);
+        return random.nextLong(10000, 99999);
     }
 }
