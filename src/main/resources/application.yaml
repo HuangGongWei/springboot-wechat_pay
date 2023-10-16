@@ -15,3 +15,9 @@ wechat:
     apiV3key: XXXX
     # 支付回调通知地址
     payNotifyUrl: https://XXXX/api/callback/wechat/pay/callback
+
+redis:
+  # redis服务地址
+  host: XXX
+  # 端口号
+  port: 6379
