@@ -3,9 +3,14 @@ package com.gw.pay.external.impl;
 import com.gw.pay.config.WechatPayProperties;
 import com.gw.pay.external.WechatPayExternalService;
 import com.gw.pay.external.request.CreateOrderPayRequest;
+import com.gw.pay.external.request.WechatPayCallBackRequest;
+import com.wechat.pay.java.core.Config;
+import com.wechat.pay.java.core.cipher.PrivacyEncryptor;
 import com.wechat.pay.java.core.exception.HttpException;
 import com.wechat.pay.java.core.exception.MalformedMessageException;
 import com.wechat.pay.java.core.exception.ServiceException;
+import com.wechat.pay.java.core.notification.NotificationParser;
+import com.wechat.pay.java.core.notification.RequestParam;
 import com.wechat.pay.java.service.payments.jsapi.JsapiServiceExtension;
 import com.wechat.pay.java.service.payments.jsapi.model.*;
 import com.wechat.pay.java.service.payments.model.Transaction;
@@ -29,10 +34,16 @@ import java.time.format.DateTimeFormatter;
 public class WechatPayExternalServiceImpl implements WechatPayExternalService {
 
     @Resource
+    private Config config;
+
+    @Resource
     private WechatPayProperties properties;
 
     @Resource
     private JsapiServiceExtension jsapiServiceExtension;
+
+    @Resource
+    private NotificationParser notificationParser;
 
     @Override
     public PrepayWithRequestPaymentResponse prepayWithRequestPayment(CreateOrderPayRequest createOrderPay) {
@@ -99,6 +110,26 @@ public class WechatPayExternalServiceImpl implements WechatPayExternalService {
             log.error("订单关闭失败，返回码：{},返回信息：{}", e.getErrorCode(), e.getErrorMessage());
             throw new RuntimeException("订单关闭失败", e);
         }
+    }
+
+    @Override
+    public <T> T payCallBack(WechatPayCallBackRequest wechatPayCallBackRequest, Class<T> clazz) {
+        log.info("payCallBack");
+        PrivacyEncryptor privacyEncryptor = config.createEncryptor();
+        String weChatPayCertificateSerialNumber = privacyEncryptor.getWechatpaySerial();
+        if (!wechatPayCallBackRequest.getSerial().equals(weChatPayCertificateSerialNumber)) {
+            log.error("证书不一致");
+            throw new RuntimeException("证书不一致");
+        }
+        RequestParam requestParam = new RequestParam.Builder()
+                .serialNumber(wechatPayCallBackRequest.getSerial())
+                .nonce(wechatPayCallBackRequest.getNonce())
+                .signType(wechatPayCallBackRequest.getSignatureType())
+                .signature(wechatPayCallBackRequest.getSignature())
+                .timestamp(wechatPayCallBackRequest.getTimestamp())
+                .body(wechatPayCallBackRequest.getBody())
+                .build();
+        return notificationParser.parse(requestParam, clazz);
     }
 
 

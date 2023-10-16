@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Description: 支付记录持久
@@ -24,6 +25,14 @@ public class PayLogDaoImpl implements PayLogDao {
     @Override
     public PayLogPO getById(Long id) {
         return dataMap.get(id);
+    }
+
+    @Override
+    public PayLogPO getByOutTradeNo(String outTradeNo) {
+        if (Objects.isNull(outTradeNo)) {
+            return null;
+        }
+        return dataMap.values().stream().filter(item -> outTradeNo.equals(item.getOutTradeNo())).findFirst().orElse(null);
     }
 
     @Override

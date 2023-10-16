@@ -21,3 +21,9 @@ redis:
   host: XXX
   # 端口号
   port: 6379
+
+
+config:
+  bot:
+    # 企业微信告警通知地址
+    url: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxx

@@ -19,6 +19,13 @@ public interface PayLogDao {
     PayLogPO getById(Long id);
 
     /**
+     * 根据 商户支付no 查询支付记录
+     * @param outTradeNo 商户支付no
+     * @return 支付记录信息
+     */
+    PayLogPO getByOutTradeNo(String outTradeNo);
+
+    /**
      * 保存
      *
      * @param payLogPO PayLogPO

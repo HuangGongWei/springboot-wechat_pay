@@ -1,6 +1,7 @@
 package com.gw.pay.external;
 
 import com.gw.pay.external.request.CreateOrderPayRequest;
+import com.gw.pay.external.request.WechatPayCallBackRequest;
 import com.wechat.pay.java.service.payments.jsapi.model.PrepayWithRequestPaymentResponse;
 import com.wechat.pay.java.service.payments.model.Transaction;
 
@@ -33,5 +34,16 @@ public interface WechatPayExternalService {
      * @param outTradeNo
      */
     void closeOrder(String outTradeNo);
+
+    /**
+     * 回调信息转换 这些都是微信的回调信息，可以封装成对象传入
+     * 官网地址：https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay4_1.shtml
+     *
+     * @param wechatPayCallBackRequest
+     * @param clazz
+     * @param <T>
+     * @return
+     */
+    <T> T payCallBack(WechatPayCallBackRequest wechatPayCallBackRequest, Class<T> clazz);
 
 }
