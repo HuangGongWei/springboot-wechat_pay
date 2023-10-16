@@ -1,8 +1,14 @@
 相较于 v2 版本，v3 版本的接口文档在阅读上可能显得相对凌乱。它的组织结构可能不太清晰，难以快速理解整个流程。但是，一旦我们对基本流程有了大致了解，我们可以利用 [wechatpay-java](https://github.com/wechatpay-apiv3/wechatpay-java) 来简化开发过程（一把梭哈）。
 
-相关api文档：[小程序支付API列表](https://pay.weixin.qq.com/wiki/doc/apiv3/open/pay/chapter2_8_3.shtml)
+相关官方文档：
 
-微信公众平台：[微信公众平台](https://mp.weixin.qq.com/)
++ [JSAPI支付-产品介绍](https://pay.weixin.qq.com/docs/merchant/products/jsapi-payment/introduction.html)
++ [JSAPI支付-API](https://pay.weixin.qq.com/docs/merchant/apis/jsapi-payment/direct-jsons/jsapi-prepay.html)
++ [小程序支付API列表](https://pay.weixin.qq.com/wiki/doc/apiv3/open/pay/chapter2_8_3.shtml)
++ [微信公众平台](https://mp.weixin.qq.com/)
++ [微信支付商家助手](https://pay.weixin.qq.com/index.php/core/home/login?return_url=https%3A%2F%2Fpay.weixin.qq.com%2Findex.php%2Fextend%2Fpay_setting%2Fma)
+
+> [springboot-wechat_pay](https://gitee.com/hgw689/springboot-wechat_pay) 示例项目模拟简单电商支付业务，根据官方文档完成前置工作替换项目配置即可使用。希望对您有所帮助！
 
 
 
@@ -73,7 +79,7 @@
 
 项目结构如下，以及需要注意点
 
-![image-20231006210226214](README.assets/image-20231006210226214.png)
+![image-20231016203737210](README.assets/image-20231016203737210.png)
 
 ## 1、引入开发库
 
@@ -97,23 +103,23 @@ implementation 'com.github.wechatpay-apiv3:wechatpay-java:0.2.10'
 
 ## 2、配置参数
 
-yaml配置文件：
+yaml配置文件（这里只对支付参数讲解）：
 
 ```yaml
 wechat:
   pay:
     # 微信公众号或者小程序等的appId
-    appId: XXXX
+    appId: XXX
     # 微信支付商户号
-    merchantId: XXXX
-    # 商户API私钥
+    merchantId: XXX
+    # 商户证书路径
+    certPemPath: /apiclient_cert.pem
+    # 商户API私钥路径
     privateKeyPath: /apiclient_key.pem
-    # 商户证书序列号
-    merchantSerialNumber: XXXXX
     # 商户APIv3密钥
-    apiV3key: XXXXX
+    apiV3key: XXXX
     # 支付回调通知地址
-    payNotifyUrl: https://XXXXXXXXXXX/api/v1/wechat/pay/callback
+    payNotifyUrl: https://XXXX/api/callback/wechat/pay/callback
 ```
 
 微信支付配置类
@@ -144,13 +150,13 @@ public class WechatPayProperties {
      */
     private String merchantId;
     /**
-     * 商户API私钥
+     * 商户证书路径
+     */
+    private String certPemPath;
+    /**
+     * 商户API私钥路径
      */
     private String privateKeyPath;
-    /**
-     * 商户证书序列号
-     */
-    private String merchantSerialNumber;
     /**
      * 商户APIv3密钥
      */
@@ -169,7 +175,11 @@ public class WechatPayProperties {
 ```java
 package com.gw.pay.config;
 
+import com.wechat.pay.java.core.Config;
 import com.wechat.pay.java.core.RSAAutoCertificateConfig;
+import com.wechat.pay.java.core.notification.NotificationConfig;
+import com.wechat.pay.java.core.notification.NotificationParser;
+import com.wechat.pay.java.service.payments.jsapi.JsapiServiceExtension;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -181,17 +191,18 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.security.cert.*;
 
 
 /**
- * Description: 初始化 具有自动下载并更新平台证书能力的RSA配置类并托关于spring
+ * Description: 微信支付相关自动配置
  *
  * @author LinHuiBa-YanAn
  * @date 2023/10/6 10:50
  */
 @Slf4j
 @Configuration
-public class WechatPayAutoCertificateConfig {
+public class WechatPayAutoConfiguration {
 
     @Autowired
     private WechatPayProperties properties;
@@ -203,11 +214,17 @@ public class WechatPayAutoCertificateConfig {
 
 
     /**
-     * 初始化商户配置
+     * 自动更新证书
+     *
      * @return RSAAutoCertificateConfig
      */
     @Bean
-    public RSAAutoCertificateConfig rsaAutoCertificateConfig() throws IOException {
+    public Config config() throws IOException {
+        String path = CLASS_PATH + properties.getCertPemPath();
+        Resource resourceCert = resourceLoader.getResource(path);
+        X509Certificate certificate = getCertificate(resourceCert.getInputStream());
+        String merchantSerialNumber = certificate.getSerialNumber().toString(16).toUpperCase();
+        log.info("==========证书序列号：{}，商户信息：{}", merchantSerialNumber, certificate.getSubjectDN());
         String privatePath = CLASS_PATH + properties.getPrivateKeyPath();
         Resource resourcePrivate = resourceLoader.getResource(privatePath);
         String privateKey = inputStreamToString(resourcePrivate.getInputStream());
@@ -215,10 +232,35 @@ public class WechatPayAutoCertificateConfig {
         RSAAutoCertificateConfig config = new RSAAutoCertificateConfig.Builder()
                 .merchantId(properties.getMerchantId())
                 .privateKey(privateKey)
-                .merchantSerialNumber(properties.getMerchantSerialNumber())
+                .merchantSerialNumber(merchantSerialNumber)
                 .apiV3Key(properties.getApiV3key())
                 .build();
         return config;
+    }
+
+    /**
+     * 微信支付对象
+     * @param config Config
+     * @return JsapiServiceExtension
+     */
+    @Bean
+    public JsapiServiceExtension jsapiServiceExtension(Config config){
+        log.info("==========加载微信支付对象");
+        JsapiServiceExtension service = new JsapiServiceExtension.Builder().config(config).build();
+        return service;
+    }
+
+    /**
+     * 微信回调对象
+     *
+     * @param config Config
+     * @return NotificationParser
+     */
+    @Bean
+    public NotificationParser notificationParser(Config config) {
+        log.info("==========加载微信回调解析对象");
+        NotificationParser parser = new NotificationParser((NotificationConfig) config);
+        return parser;
     }
 
     /**
@@ -239,6 +281,27 @@ public class WechatPayAutoCertificateConfig {
         return stringBuilder.toString();
     }
 
+    /**
+     * 获取证书 将文件流转成证书文件
+     *
+     * @param inputStream 证书文件
+     * @return {@link X509Certificate} 获取证书
+     */
+    public static X509Certificate getCertificate(InputStream inputStream) {
+        try {
+            CertificateFactory cf = CertificateFactory.getInstance("X509");
+            X509Certificate cert = (X509Certificate) cf.generateCertificate(inputStream);
+            cert.checkValidity();
+            return cert;
+        } catch (CertificateExpiredException e) {
+            throw new RuntimeException("证书已过期", e);
+        } catch (CertificateNotYetValidException e) {
+            throw new RuntimeException("证书尚未生效", e);
+        } catch (CertificateException e) {
+            throw new RuntimeException("无效的证书", e);
+        }
+    }
+
 }
 ```
 
@@ -246,53 +309,57 @@ public class WechatPayAutoCertificateConfig {
 
 ## 4、微信支付对接
 
-在接口中定义了创建订单、根据商户订单号查询订单、关闭订单三类核心方法，几乎满足最基本的微信支付对接～
+在接口中定义了提交预支付请求付款、查询状态、取消订单三类核心方法，以及回调信息转换方法。几乎满足最基本的微信支付对接～
 
 ```java
 package com.gw.pay.external;
 
 import com.gw.pay.external.request.CreateOrderPayRequest;
-import com.gw.pay.external.request.CreateOrderRequest;
-import com.gw.pay.external.request.OrderRequest;
-import com.wechat.pay.java.service.payments.jsapi.model.PrepayResponse;
+import com.gw.pay.external.request.WechatPayCallBackRequest;
+import com.wechat.pay.java.service.payments.jsapi.model.PrepayWithRequestPaymentResponse;
 import com.wechat.pay.java.service.payments.model.Transaction;
 
 /**
- * Description: 微信支付对接
+ * Description: 微信支付对接 V2（基于JSAPI 支付的扩展类实现）
  *
  * @author LinHuiBa-YanAn
- * @date 2023/10/6 10:57
+ * @date 2023/10/7 11:38
  */
 public interface WechatPayExternalService {
-    /**
-     * 创建订单
-     * @param createOrder 创建订单请求体
-     * @return预支付交易会话标识
-     */
-    PrepayResponse createOrder(CreateOrderPayRequest createOrder);
 
     /**
-     * 根据商户订单号查询订单
-     *
-     * @param outTradeNo 对外贸易号（即本业务中的订单号）
-     * @return 事项
+     * 提交预支付请求付款
+     * @param createOrderPay 订单请求体
+     * @return PrepayWithRequestPaymentResponse 预付费与请求付款响应
      */
-    Transaction queryOrderByOutTradeNo(String outTradeNo);
+    PrepayWithRequestPaymentResponse prepayWithRequestPayment(CreateOrderPayRequest createOrderPay);
 
     /**
-     * 根据商户订单号查询订单(根据回话id，回调中返回)
+     * 查询状态
      *
-     * @param transactionId 商户订单号
-     * @return 事项
+     * @param outTradeNo 商户支付no
+     * @return 状态信息
      */
-    Transaction queryOrderByTransactionId(String transactionId);
+    Transaction queryStatus(String outTradeNo);
 
     /**
-     * 关闭订单
+     * 取消订单
      *
-     * @param outTradeNo 对外贸易号（即本业务中的订单号）
+     * @param outTradeNo
      */
     void closeOrder(String outTradeNo);
+
+    /**
+     * 回调信息转换 这些都是微信的回调信息，可以封装成对象传入
+     * 官网地址：https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay4_1.shtml
+     *
+     * @param wechatPayCallBackRequest
+     * @param clazz
+     * @param <T>
+     * @return
+     */
+    <T> T payCallBack(WechatPayCallBackRequest wechatPayCallBackRequest, Class<T> clazz);
+
 }
 ```
 
@@ -302,55 +369,73 @@ public interface WechatPayExternalService {
 package com.gw.pay.external.impl;
 
 import com.gw.pay.config.WechatPayProperties;
+import com.gw.pay.external.WechatPayExternalService;
 import com.gw.pay.external.request.CreateOrderPayRequest;
-import com.gw.pay.external.request.CreateOrderRequest;
-import com.gw.pay.external.request.OrderRequest;
-import com.wechat.pay.java.core.RSAAutoCertificateConfig;
+import com.gw.pay.external.request.WechatPayCallBackRequest;
+import com.wechat.pay.java.core.Config;
+import com.wechat.pay.java.core.cipher.PrivacyEncryptor;
 import com.wechat.pay.java.core.exception.HttpException;
 import com.wechat.pay.java.core.exception.MalformedMessageException;
 import com.wechat.pay.java.core.exception.ServiceException;
-import com.wechat.pay.java.service.payments.jsapi.JsapiService;
+import com.wechat.pay.java.core.notification.NotificationParser;
+import com.wechat.pay.java.core.notification.RequestParam;
+import com.wechat.pay.java.service.payments.jsapi.JsapiServiceExtension;
 import com.wechat.pay.java.service.payments.jsapi.model.*;
 import com.wechat.pay.java.service.payments.model.Transaction;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
- * Description: 微信支付对接
+ * Description: 微信支付对接（基于JSAPI 支付的扩展类实现）
  *
  * @author LinHuiBa-YanAn
- * @date 2023/10/6 10:58
+ * @date 2023/10/7 11:49
  */
 @Slf4j
 @Service
 public class WechatPayExternalServiceImpl implements WechatPayExternalService {
 
     @Resource
-    private RSAAutoCertificateConfig rsaAutoCertificateConfig;
+    private Config config;
 
     @Resource
     private WechatPayProperties properties;
 
+    @Resource
+    private JsapiServiceExtension jsapiServiceExtension;
+
+    @Resource
+    private NotificationParser notificationParser;
+
     @Override
-    public PrepayResponse createOrder(CreateOrderPayRequest createOrder) {
+    public PrepayWithRequestPaymentResponse prepayWithRequestPayment(CreateOrderPayRequest createOrderPay) {
+        log.info("prepayWithRequestPayment");
         PrepayRequest request = new PrepayRequest();
-        request.setAppid(properties.getAppId());
-        request.setMchid(properties.getMerchantId());
-        request.setDescription(createOrder.getOrderTitle());
-        request.setOutTradeNo(createOrder.getOrderId());
-        request.setNotifyUrl(properties.getPayNotifyUrl());
         Amount amount = new Amount();
-        amount.setTotal(createOrder.getAmountTotal());
+        BigDecimal payMoney = createOrderPay.getPayMoney();
+        BigDecimal amountTotal = payMoney.multiply(new BigDecimal("100").setScale(0, RoundingMode.DOWN));
+        amount.setTotal(amountTotal.intValue());
         request.setAmount(amount);
         Payer payer = new Payer();
-        payer.setOpenid(createOrder.getOpenid());
+        payer.setOpenid(createOrderPay.getOpenId());
         request.setPayer(payer);
-        PrepayResponse result;
+        request.setTimeExpire(getExpiredTimeStr());
+        request.setAppid(properties.getAppId());
+        request.setMchid(properties.getMerchantId());
+        request.setAttach(String.valueOf(createOrderPay.getId()));
+        request.setDescription(createOrderPay.getPayContent());
+        request.setNotifyUrl(properties.getPayNotifyUrl());
+        //这里生成流水号，后续用这个流水号与微信交互，查询订单状态
+        request.setOutTradeNo(createOrderPay.getOutTradeNo());
+        PrepayWithRequestPaymentResponse result;
         try {
-            JsapiService service = new JsapiService.Builder().config(rsaAutoCertificateConfig).build();
-            result = service.prepay(request);
+            result = jsapiServiceExtension.prepayWithRequestPayment(request);
         } catch (HttpException e) {
             log.error("微信下单发送HTTP请求失败，错误信息：{}", e.getHttpRequest());
             throw new RuntimeException("微信下单发送HTTP请求失败", e);
@@ -363,123 +448,136 @@ public class WechatPayExternalServiceImpl implements WechatPayExternalService {
             log.error("服务返回成功，返回体类型不合法，或者解析返回体失败，错误信息：{}", e.getMessage());
             throw new RuntimeException("服务返回成功，返回体类型不合法，或者解析返回体失败", e);
         }
+        log.info("prepayWithRequestPayment end");
         return result;
     }
 
     @Override
-    public Transaction queryOrderByOutTradeNo(String outTradeNo) {
-        QueryOrderByOutTradeNoRequest queryRequest = new QueryOrderByOutTradeNoRequest();
-        queryRequest.setMchid(properties.getMerchantId());
-        queryRequest.setOutTradeNo(outTradeNo);
-        Transaction result;
+    public Transaction queryStatus(String outTradeNo) {
+        QueryOrderByOutTradeNoRequest request = new QueryOrderByOutTradeNoRequest();
+        request.setMchid(properties.getMerchantId());
+        request.setOutTradeNo(outTradeNo);
         try {
-            JsapiService service = new JsapiService.Builder().config(rsaAutoCertificateConfig).build();
-            result = service.queryOrderByOutTradeNo(queryRequest);
+            return jsapiServiceExtension.queryOrderByOutTradeNo(request);
         } catch (ServiceException e) {
             log.error("订单查询失败，返回码：{},返回信息：{}", e.getErrorCode(), e.getErrorMessage());
             throw new RuntimeException("订单查询失败", e);
         }
-        return result;
-    }
-
-    @Override
-    public Transaction queryOrderByTransactionId(String transactionId) {
-        QueryOrderByIdRequest queryRequest = new QueryOrderByIdRequest();
-        queryRequest.setMchid(properties.getMerchantId());
-        queryRequest.setTransactionId(transactionId);
-        Transaction result;
-        try {
-            JsapiService service = new JsapiService.Builder().config(rsaAutoCertificateConfig).build();
-            result = service.queryOrderById(queryRequest);
-        } catch (ServiceException e) {
-            log.error("订单查询失败，返回码：{},返回信息：{}", e.getErrorCode(), e.getErrorMessage());
-            throw new RuntimeException("订单查询失败", e);
-        }
-        return result;
     }
 
     @Override
     public void closeOrder(String outTradeNo) {
-        CloseOrderRequest closeOrderRequest = new CloseOrderRequest();
-        closeOrderRequest.setMchid(properties.getMerchantId());
-        closeOrderRequest.setOutTradeNo(outTradeNo);
+        log.info("closeOrder");
+        CloseOrderRequest closeRequest = new CloseOrderRequest();
+        closeRequest.setMchid(properties.getMerchantId());
+        closeRequest.setOutTradeNo(outTradeNo);
         try {
-            JsapiService service = new JsapiService.Builder().config(rsaAutoCertificateConfig).build();
-            service.closeOrder(closeOrderRequest);
+            //方法没有返回值，意味着成功时API返回204 No Content
+            jsapiServiceExtension.closeOrder(closeRequest);
         } catch (ServiceException e) {
             log.error("订单关闭失败，返回码：{},返回信息：{}", e.getErrorCode(), e.getErrorMessage());
             throw new RuntimeException("订单关闭失败", e);
         }
     }
+
+    @Override
+    public <T> T payCallBack(WechatPayCallBackRequest wechatPayCallBackRequest, Class<T> clazz) {
+        log.info("payCallBack");
+        PrivacyEncryptor privacyEncryptor = config.createEncryptor();
+        String weChatPayCertificateSerialNumber = privacyEncryptor.getWechatpaySerial();
+        if (!wechatPayCallBackRequest.getSerial().equals(weChatPayCertificateSerialNumber)) {
+            log.error("证书不一致");
+            throw new RuntimeException("证书不一致");
+        }
+        RequestParam requestParam = new RequestParam.Builder()
+                .serialNumber(wechatPayCallBackRequest.getSerial())
+                .nonce(wechatPayCallBackRequest.getNonce())
+                .signType(wechatPayCallBackRequest.getSignatureType())
+                .signature(wechatPayCallBackRequest.getSignature())
+                .timestamp(wechatPayCallBackRequest.getTimestamp())
+                .body(wechatPayCallBackRequest.getBody())
+                .build();
+        return notificationParser.parse(requestParam, clazz);
+    }
+
+
+    /**
+     * 获取失效时间
+     */
+    private String getExpiredTimeStr() {
+        //失效时间，10分钟
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime expiredTime = now.plusMinutes(10);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+        return formatter.format(expiredTime);
+    }
 }
 ```
 
-其中使用到的创建订单实体类：
+其中使用到的 **提交预支付请求付款请求体** 实体类：
 
 ```java
 /**
- * Description: 创建订单
+ * Description: 提交预支付请求付款请求体
  *
  * @author LinHuiBa-YanAn
  * @date 2023/10/6 17:06
  */
 @Data
-public class CreateOrder {
+public class CreateOrderPayRequest {
     /**
-     * 订单号
+     * 主键id
      */
-    private String orderId;
+    private Long id;
+
     /**
-     * 订单标题
+     * 商户支付no 和微信交互 查询订单使用（outTradeNo）
      */
-    private String orderTitle;
+    private String outTradeNo;
+
     /**
-     * 订单总金额，单位为分
+     * 用户openid
      */
-    private Integer amountTotal;
+    private String openId;
+
     /**
-     * 用户在商户appid下的唯一标识
+     * 支付金额
      */
-    private String openid;
+    private BigDecimal payMoney;
+
+    /**
+     * 支付内容
+     */
+    private String payContent;
 }
 ```
 
 > 自测一下
 
 ```java
-package com.gw.pay;
-
-import com.alibaba.fastjson.JSONObject;
-import com.gw.pay.external.request.CreateOrderPayRequest;
-import com.gw.pay.external.request.CreateOrderRequest;
-import com.gw.pay.external.request.OrderRequest;
-import com.wechat.pay.java.service.payments.jsapi.model.PrepayResponse;
-import com.wechat.pay.java.service.payments.model.Transaction;
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-
-import javax.annotation.Resource;
-
+@ActiveProfiles("local")
 @SpringBootTest
 class SpringbootWechatPayApplicationTests {
 
     @Resource
     private WechatPayExternalService wechatPayExternalService;
 
+
     @Test
-    void createOrder() {
-        CreateOrderPayRequest createOrder = new CreateOrderPayRequest();
-        createOrder.setOrderId("100000001");
-        createOrder.setOrderTitle("商机直租会员续费");
-        createOrder.setAmountTotal(1);
-        createOrder.setOpenid("oKwQd5MtFfgnXyLBp7vC6Pe3HAJQ");
-        PrepayResponse prepayResponse = wechatPayExternalService.createOrder(createOrder);
-        System.out.println(JSONObject.toJSONString(prepayResponse));
+    void prepayWithRequestPayment() {
+        CreateOrderPayRequest createOrderRequest = new CreateOrderPayRequest();
+        createOrderRequest.setId(1001L);
+        createOrderRequest.setOutTradeNo("100000004");
+        createOrderRequest.setOpenId("oKwQd5MtFfgnXyLBp7vC6Pe3HAJQ");
+        createOrderRequest.setPayMoney(new BigDecimal("0.01"));
+        createOrderRequest.setPayContent("商机直租会员续费");
+        PrepayWithRequestPaymentResponse response = wechatPayExternalService.prepayWithRequestPayment(createOrderRequest);
+        System.out.println(JSONObject.toJSONString(response));
     }
 
     @Test
-    void queryOrder() {
-        Transaction result = wechatPayExternalService.queryOrderByOutTradeNo("100000001");
+    void queryStatus() {
+        Transaction result = wechatPayExternalService.queryStatus("100000004");
         System.out.println(JSONObject.toJSONString(result));
         if (Transaction.TradeStateEnum.SUCCESS.equals(result.getTradeState())) {
             System.out.println("支付成功");
@@ -489,8 +587,8 @@ class SpringbootWechatPayApplicationTests {
     }
 
     @Test
-    void closeOrder() {
-        wechatPayExternalService.closeOrder("100000001");
+    void closeOrderV2() {
+        wechatPayExternalService.closeOrder("100000004");
     }
 
 }
@@ -510,17 +608,20 @@ class SpringbootWechatPayApplicationTests {
 ```java
 package com.gw.pay.controller;
 
+import cn.hutool.http.HttpUtil;
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.gw.pay.utils.HttpServletUtils;
-import com.wechat.pay.java.core.RSAAutoCertificateConfig;
-import com.wechat.pay.java.core.notification.NotificationParser;
-import com.wechat.pay.java.core.notification.RequestParam;
-import com.wechat.pay.java.service.partnerpayments.app.model.Transaction;
+import com.gw.pay.service.OrderService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -531,12 +632,16 @@ import java.util.Map;
  * @author LinHuiBa-YanAn
  * @date 2023/10/6 11:18
  */
-@RequestMapping("/api/v1/wechat/pay")
 @Slf4j
+@RestController
+@RequestMapping("/api/callback/wechat/pay")
 public class WechatPayCallbackController {
 
+    @Value("${config.bot.url}")
+    private String botUrl;
+
     @Resource
-    private RSAAutoCertificateConfig rsaAutoCertificateConfig;
+    private OrderService orderService;
 
     /**
      * 回调接口
@@ -545,96 +650,192 @@ public class WechatPayCallbackController {
      * @return
      * @throws IOException
      */
-    @RequestMapping(value = "/callback")
-    public synchronized String callback(HttpServletRequest request) throws IOException {
+    @RequestMapping(value = "/callback", method = {RequestMethod.POST, RequestMethod.GET})
+    public Map<String, String> payCallback(HttpServletRequest request, HttpServletResponse response) {
         log.info("------收到支付通知------");
-        // 请求头Wechatpay-Signature
-        String signature = request.getHeader("Wechatpay-Signature");
-        // 请求头Wechatpay-nonce
-        String nonce = request.getHeader("Wechatpay-Nonce");
-        // 请求头Wechatpay-Timestamp
-        String timestamp = request.getHeader("Wechatpay-Timestamp");
-        // 微信支付证书序列号
-        String serial = request.getHeader("Wechatpay-Serial");
-        // 签名方式
-        String signType = request.getHeader("Wechatpay-Signature-Type");
-        // 构造 RequestParam
-        RequestParam requestParam = new RequestParam.Builder()
-                .serialNumber(serial)
-                .nonce(nonce)
-                .signature(signature)
-                .timestamp(timestamp)
-                .signType(signType)
-                .body(HttpServletUtils.getRequestBody(request))
-                .build();
-
-        // 初始化 NotificationParser
-        NotificationParser parser = new NotificationParser(rsaAutoCertificateConfig);
-        // 以支付通知回调为例，验签、解密并转换成 Transaction
-        log.info("验签参数：{}", requestParam);
-        Transaction transaction = parser.parse(requestParam, Transaction.class);
-        log.info("验签成功！-支付回调结果：{}", transaction.toString());
-
-        Map<String, String> returnMap = new HashMap<>(2);
-        returnMap.put("code", "FAIL");
-        returnMap.put("message", "失败");
-        if (Transaction.TradeStateEnum.SUCCESS != transaction.getTradeState()) {
-            log.info("内部订单号【{}】,微信支付订单号【{}】支付未成功", transaction.getOutTradeNo(), transaction.getTransactionId());
-            return JSONObject.toJSONString(returnMap);
+        Map<String, String> result = new HashMap<>();
+        try {
+            orderService.payCallBack(request);
+            result.put("code", "SUCCESS");
+            result.put("message", "成功");
+            return result;
+        } catch (Exception e) {
+            log.error("支付处理失败,req:{}", request, e);
+            alarm();
+            response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
+            result.put("code", "FAIL");
+            result.put("message", e.getMessage());
+            return result;
         }
-        //todo 修改订单前，建议主动请求微信查询订单是否支付成功，防止恶意post
-        //todo 修改订单信息
-        returnMap.put("code", "SUCCESS");
-        returnMap.put("message", "成功");
-        return JSONObject.toJSONString(returnMap);
+    }
+
+    /**
+     * 企业微信群告警
+     */
+    private void alarm() {
+        JSONObject messageReq = new JSONObject();
+        messageReq.put("msgtype", "text");
+        JSONObject text = new JSONObject();
+        text.put("content", "【商业直租】支付处理失败！" );
+        messageReq.put("text", text);
+        String url = botUrl;
+        String reqStr = JSON.toJSONString(messageReq);
+        HttpUtil.post(url, reqStr, 30000);
     }
 
 }
 ```
 
-使用到的网络工具：
+我们在 OrderService 定义了微信支付回调方法，让controller看上去更简洁一点～
 
 ```java
-package com.gw.pay.utils;
-
-import javax.servlet.ServletInputStream;
-import javax.servlet.http.HttpServletRequest;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-
 /**
- * Description: 网络工具
+ * Description: 订单管理
  *
  * @author LinHuiBa-YanAn
- * @date 2023/10/6 11:23
+ * @date 2023/10/11 19:45
  */
-public class HttpServletUtils {
+public interface OrderService {
+  
     /**
-     * 获取请求体
-     *
-     * @param request
-     * @return
-     * @throws IOException
+     * 微信支付回调
+     * @param request HttpServletRequest
      */
-    public static String getRequestBody(HttpServletRequest request) throws IOException {
-        ServletInputStream stream = null;
-        BufferedReader reader = null;
-        StringBuffer sb = new StringBuffer();
-        try {
-            stream = request.getInputStream();
-            // 获取响应
-            reader = new BufferedReader(new InputStreamReader(stream));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line);
-            }
-        } catch (IOException e) {
-            throw new IOException("读取返回支付接口数据流出现异常！");
-        } finally {
-            reader.close();
+    void payCallBack(HttpServletRequest request) throws Exception;
+
+}
+```
+
+具体实现方法：
+
+```java
+package com.gw.pay.service.impl;
+
+import cn.hutool.core.convert.Convert;
+import com.alibaba.fastjson.JSONObject;
+import com.gw.pay.dao.OrderDao;
+import com.gw.pay.dao.PayLogDao;
+import com.gw.pay.entity.OrderPO;
+import com.gw.pay.entity.PayLogPO;
+import com.gw.pay.enums.OrderPayStatusEnum;
+import com.gw.pay.enums.OrderStatusEnum;
+import com.gw.pay.enums.WechatPayCallBackHeaderConstant;
+import com.gw.pay.external.WechatPayExternalService;
+import com.gw.pay.external.request.CreateOrderPayRequest;
+import com.gw.pay.external.request.WechatPayCallBackRequest;
+import com.gw.pay.service.OrderService;
+import com.gw.pay.utils.NumberGenerate;
+import com.gw.pay.vo.OrderPayVO;
+import com.gw.pay.vo.StatusVO;
+import com.wechat.pay.java.service.payments.jsapi.model.PrepayWithRequestPaymentResponse;
+import com.wechat.pay.java.service.payments.model.Transaction;
+import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+import org.springframework.stereotype.Service;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import java.io.BufferedReader;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Objects;
+
+/**
+ * Description: 订单
+ *
+ * @author LinHuiBa-YanAn
+ * @date 2023/10/11 19:46
+ */
+@Slf4j
+@Service
+public class OrderServiceImpl implements OrderService {
+    @Resource
+    private OrderDao orderDao;
+
+    @Resource
+    private PayLogDao payLogDao;
+
+    @Resource
+    private WechatPayExternalService wechatPayExternalService;
+
+    @Resource
+    private RedissonClient redissonClient;
+
+    /**
+     * 分布式锁
+     */
+    private final String LOCK_KEY = "WECHAT_PAY_LOCK:";
+
+    @Override
+    public void payCallBack(HttpServletRequest request) throws Exception {
+        BufferedReader reader = request.getReader();
+        String line;
+        StringBuilder sb = new StringBuilder();
+        while ((line = reader.readLine()) != null) {
+            sb.append(line);
         }
-        return sb.toString();
+        WechatPayCallBackRequest callBackRequest = new WechatPayCallBackRequest();
+        callBackRequest.setBody(sb.toString());
+        callBackRequest.setNonce(request.getHeader(WechatPayCallBackHeaderConstant.NONCE));
+        callBackRequest.setSerial(request.getHeader(WechatPayCallBackHeaderConstant.SERIAL));
+        callBackRequest.setSignature(request.getHeader(WechatPayCallBackHeaderConstant.SIGNATURE));
+        callBackRequest.setSignatureType(request.getHeader(WechatPayCallBackHeaderConstant.SIGNATURE_TYPE));
+        callBackRequest.setTimestamp(request.getHeader(WechatPayCallBackHeaderConstant.TIMESTAMP));
+        log.info("验签参数{}", JSONObject.toJSONString(callBackRequest));
+        Transaction transaction = wechatPayExternalService.payCallBack(callBackRequest, Transaction.class);
+        log.info("验签成功！-支付回调结果：{}", transaction.toString());
+
+        String lockKey = LOCK_KEY + transaction.getOutTradeNo();
+        RLock lock = redissonClient.getLock(lockKey);
+        try {
+            boolean isLock = lock.tryLock();
+            if (!isLock) {
+                throw new RuntimeException("请勿重复操作");
+            }
+            log.info("开始用户支付后业务处理");
+            processTransaction(transaction);
+            log.info("用户支付后业务处理成功");
+        } catch (Exception e) {
+            log.error("用户支付后业务处理错误, e{}", e);
+            throw e;
+        } finally {
+            // 释放锁
+            lock.unlock();
+        }
+    }
+
+    /**
+     * 处理回调业务(需要保证事务操作哦)
+     * @param transaction Transaction
+     */
+    private void processTransaction(Transaction transaction) {
+        // 修改订单前，主动请求微信查询订单是否支付成功，防止恶意post
+        transaction = wechatPayExternalService.queryStatus(transaction.getOutTradeNo());
+        if (Transaction.TradeStateEnum.SUCCESS != transaction.getTradeState()) {
+            log.info("内部订单号【{}】,微信支付订单号【{}】支付未成功", transaction.getOutTradeNo(), transaction.getTransactionId());
+            throw new RuntimeException("订单支付未成功");
+        }
+        // 修改支付信息
+        PayLogPO payLog = payLogDao.getByOutTradeNo(transaction.getOutTradeNo());
+        if (OrderPayStatusEnum.PAY_SUCCESS.getCode().equals(payLog.getStatus())) {
+            // 若订单状态已为支付成功则不处理
+            return;
+        }
+        payLog.setTransactionId(transaction.getTransactionId());
+        if (Objects.nonNull(transaction.getSuccessTime())) {
+            payLog.setPayTime(LocalDateTime.parse(transaction.getSuccessTime(), DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+        }
+        payLog.setStatus(OrderPayStatusEnum.PAY_SUCCESS.getCode());
+        payLogDao.store(payLog);
+        // 修改订单信息
+        OrderPO order = orderDao.getById(payLog.getOrderId());
+        order.setStatus(OrderStatusEnum.DELIVER_GOODS.getCode());
+        orderDao.store(order);
+        // 其他业务操作
     }
 }
 ```
+
+> 项目中基于redis实现分布式锁，保证幂等性和防止并发冲突。对于Redis实现分布式锁想要进一步了解的小伙伴可查看小编的另外一篇博文[Redis分布式锁](https://blog.csdn.net/m0_49183244/article/details/126952345?spm=1001.2014.3001.5502)

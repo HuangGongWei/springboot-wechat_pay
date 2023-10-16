@@ -5,7 +5,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 /**
- * Description: 订单请求体
+ * Description: 提交预支付请求付款请求体
  *
  * @author LinHuiBa-YanAn
  * @date 2023/10/6 17:06
